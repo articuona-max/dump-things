@@ -44,7 +44,7 @@
         margin-top: 20px;
         white-space: pre-wrap;
     }
-    .hidden { display: none; }
+    .hidden { display:none; }
 </style>
 </head>
 <body>
@@ -71,6 +71,7 @@
 /* ===== CONFIG ===== */
 const PASSWORD = "Gargoza@321";
 const SALT = "dump-things-static-salt";
+const STORAGE_KEY = "dump_encrypted";
 /* ================== */
 
 let cryptoKey;
@@ -125,9 +126,23 @@ async function login() {
         alert("Access denied");
         return;
     }
+
     cryptoKey = await deriveKey(pass);
+
+    // Load existing encrypted data
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+        try {
+            const decrypted = await decrypt(JSON.parse(stored));
+            dump = JSON.parse(decrypted);
+        } catch {
+            alert("Failed to decrypt stored data");
+        }
+    }
+
     document.getElementById("login").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
+    render();
 }
 
 function addEntry() {
@@ -140,6 +155,7 @@ function addEntry() {
     });
 
     document.getElementById("entry").value = "";
+    persist();
     render();
 }
 
@@ -148,6 +164,11 @@ function render() {
         dump.map(e =>
             `[${e.timestamp}]\n${e.text}\n`
         ).join("\n");
+}
+
+async function persist() {
+    const encrypted = await encrypt(JSON.stringify(dump));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
 }
 
 async function exportDump() {
@@ -167,6 +188,7 @@ async function importDump(e) {
     const payload = JSON.parse(await file.text());
     const decrypted = await decrypt(payload);
     dump = JSON.parse(decrypted);
+    persist();
     render();
 }
 </script>
